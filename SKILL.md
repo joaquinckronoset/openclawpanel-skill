@@ -39,7 +39,7 @@ All fields except `text` are optional (defaults: x=0, y=0, color=white, font=mon
 
 **POST /api/display/clear** — Clear the display to black. No body needed.
 
-**POST /api/display/pixel** — Draw pixels.
+**POST /api/display/pixel** — Draw pixels. **Limit: ~400 pixels per call** — larger payloads cause "Invalid JSON" on the ESP32. For filled areas, prefer `rect`, `circle`, or `line` endpoints instead.
 ```json
 {"pixels": [{"x": 10, "y": 5, "color": "0xF800"}, {"x": 11, "y": 5, "color": "0x07E0"}], "swap": true}
 ```
@@ -128,13 +128,13 @@ Body: <raw WAV file bytes>
 - Format: RIFF WAV, uncompressed PCM only (format tag = 1). No MP3, OGG, ADPCM, or other codecs.
 - Bit depth: **16-bit only** (8-bit is NOT supported and will be rejected).
 - Channels: Mono (1ch) or Stereo (2ch). **Mono recommended** — uses half the size.
-- Sample rate: Any (the hardware reinitializes to match). **22050 Hz recommended** for best size/quality balance.
+- Sample rate: Any (the hardware reinitializes to match). **11025 Hz recommended** — higher rates (22050/44100) often cause "No memory" errors on the ESP32. 11025 Hz gives the best reliability and allows longer clips.
 - Max file size: **64 KB** (65536 bytes including headers).
 - Max duration at 44100 Hz mono: ~0.74s. At 22050 Hz mono: ~1.48s. At 11025 Hz mono: ~2.96s.
 
 To convert any audio file to a compatible WAV, use ffmpeg:
 ```bash
-ffmpeg -i input.mp3 -ar 22050 -ac 1 -sample_fmt s16 -t 1.4 output.wav
+ffmpeg -i input.mp3 -ar 11025 -ac 1 -sample_fmt s16 -t 2.9 output.wav
 ```
 
 **GET /api/sound/list** — Returns JSON array of built-in sound names.
@@ -180,19 +180,32 @@ Most draw endpoints accept `"swap": true|false` (default: true).
    POST /api/display/text   {"text":"64,770","x":2,"y":24,"color":"0xFFE0","font":"arial_16","swap":true}
    POST /api/display/unlock
    ```
+   Always use `"swap": false` on every element except the very last one. This prevents flicker and ensures the entire scene appears at once.
 
-3. **For sounds**, just call directly (no lock needed):
+3. **To show something for a fixed duration** (auto-unlock pattern):
+   ```
+   POST /api/display/lock
+   POST /api/display/clear
+   POST /api/display/text  {"text":"ALERT","x":4,"y":22,"color":"0xF800","font":"arial_20"}
+   sleep 5
+   POST /api/display/unlock
+   ```
+   Use this when the user wants to flash a message briefly. Always unlock after the sleep.
+
+4. **For sounds**, just call directly (no lock needed):
    ```
    POST /api/sound/play  {"name":"coin"}
    ```
 
-4. **To return to normal operation**: call unlock, or use view_panel to jump to a specific dashboard panel.
+5. **To return to normal operation**: call unlock, or use view_panel to jump to a specific dashboard panel.
 
 ## Guardrails
 
 - Always unlock the display when done. Never leave it locked indefinitely.
 - The display is tiny (64x32 pixels). Keep text very short: ~5-6 chars max for arial_20, ~10 chars for mono_12, ~16 chars for 4x6.
+- Prefer `mono_12` or `4x6` for informational text — they are more legible than large fonts on a 64x32 display. Reserve `arial_20` for single words or short numbers.
 - The y coordinate in text is the baseline (bottom of text), not the top. For arial_20, use y=20-28. For 4x6, use y=6-30.
+- When drawing a filled circle with an outline, draw the filled circle first, then the outline on top. On small screens, an outline drawn under a fill can be completely hidden.
 - Do not set brightness or volume outside 0-100.
 - If the user says "reset", "stop", or "back to normal", call POST /api/display/unlock.
 - Check GET /api/status first if unsure whether the panel is reachable.
