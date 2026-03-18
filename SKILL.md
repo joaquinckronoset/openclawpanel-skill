@@ -201,6 +201,7 @@ Most draw endpoints accept `"swap": true|false` (default: true).
 
 ## Guardrails
 
+- **Always call POST /api/display/lock before any drawing operation. No exceptions — even for quick single draw calls.**
 - Always unlock the display when done. Never leave it locked indefinitely.
 - The display is tiny (64x32 pixels). Keep text very short: ~5-6 chars max for arial_20, ~10 chars for mono_12, ~16 chars for 4x6.
 - Prefer `mono_12` or `4x6` for informational text — they are more legible than large fonts on a 64x32 display. Reserve `arial_20` for single words or short numbers.
@@ -209,6 +210,19 @@ Most draw endpoints accept `"swap": true|false` (default: true).
 - Do not set brightness or volume outside 0-100.
 - If the user says "reset", "stop", or "back to normal", call POST /api/display/unlock.
 - Check GET /api/status first if unsure whether the panel is reachable.
+
+## Real-world calibration (64x32 panel)
+
+Font sizing for typical short text (4-6 chars):
+- `arial_20` — too large for most use cases, text overflows or looks crowded
+- `arial_16` — still large, ok for 1-3 chars
+- `mono_12` — good default for short words (4-6 chars)
+- `5x7`, `4x6` — use for longer strings or when showing multiple lines
+
+Centering tips for `mono_12`:
+- Vertical center: y≈12
+- Horizontal: for a 4-char word (~6px/char), x≈18 centers on 64px wide display
+- When in doubt, start at x=15-20, y=12 and adjust based on feedback
 
 ## Examples
 
