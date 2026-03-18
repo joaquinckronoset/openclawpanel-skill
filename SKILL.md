@@ -166,12 +166,6 @@ for y in range(32):
 
 **POST /api/display/unlock** — Release control back to the normal timeline. No body needed.
 
-**POST /api/view_panel** — Force a specific timeline panel to show.
-```json
-{"index": 0}
-```
-This also unlocks the display if it was locked.
-
 ### Sound
 
 **POST /api/sound/play** — Play a built-in sound. Blocks until playback finishes.
@@ -259,7 +253,7 @@ Most draw endpoints accept `"swap": true|false` (default: true).
    POST /api/sound/play  {"name":"coin"}
    ```
 
-5. **To return to normal operation**: call unlock, or use view_panel to jump to a specific dashboard panel.
+5. **To return to normal operation**: call unlock to resume the clock.
 
 ## Guardrails
 
