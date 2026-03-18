@@ -74,23 +74,8 @@ Values are auto-scaled to fit the height. `fill` fills the area under the line.
 ```
 This clears the screen and draws a complete panel. `dissolve` enables a fade transition.
 
-**POST /api/display/gif** — Play the built-in animated GIF on the panel display. No JSON body needed.
-```
-curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/gif
-```
-- The GIF plays asynchronously (non-blocking) — the HTTP response returns immediately with `{"status":"ok"}`.
-- Only one GIF can play at a time. If a GIF is already playing, the endpoint returns HTTP 400 with `{"error":"GIF already playing"}`.
-- The GIF runs once (1 loop) and then stops. The last frame remains on the display.
-- The built-in GIF is the OpenClaw logo animation. It is embedded in firmware and cannot be changed via API.
-- To play the GIF as a celebration or notification, use it after a lock:
-```
-curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/lock
-curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/gif
-# Wait a few seconds for the animation to finish, then unlock:
-sleep 3
-curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/unlock
-```
-- You can check if a GIF is currently playing by calling GET `/api/status` and checking if the display is busy.
+**POST /api/display/gif** — Play the built-in animated GIF. No body needed.
+Note: availability depends on firmware version. In v0.0.12 the endpoint returns `{"ok":true}` but may display nothing if no GIF is embedded in the firmware build.
 
 **POST /api/display/bitmap** — Draw a raw RGB565 bitmap. Body is raw binary (w*h*2 bytes). Dimensions via query params.
 ```
@@ -112,59 +97,19 @@ Draw new content with `"swap": false` first, then call dissolve to transition. B
 ```
 Range: 0 (off) to 100 (max). Persists across reboots.
 
-**GET /api/display/framebuffer** — Read the current display contents as raw RGB565 binary data.
-```
-curl -s http://$OPENCLAW_PANEL_IP/api/display/framebuffer -o screenshot.bin
-```
-- Returns exactly **4096 bytes** (64 pixels wide × 32 pixels tall × 2 bytes per pixel).
-- Format: raw RGB565, **little-endian**, **row-major** (left-to-right, top-to-bottom). Each pixel is 2 bytes.
-- Content-Type: `application/octet-stream`. No caching (`Cache-Control: no-store`).
-- Returns the **front buffer** (what is currently visible on the display), not the back buffer.
-- This endpoint does NOT require a lock. You can read the framebuffer at any time, even while the clock is running.
-
-**RGB565 decoding:** Each 2-byte pixel encodes color as: `RRRRRGGGGGGBBBBB` (5 bits red, 6 bits green, 5 bits blue).
-To convert a pixel to 8-bit RGB:
-```
-r8 = (pixel >> 11) * 255 / 31
-g8 = ((pixel >> 5) & 0x3F) * 255 / 63
-b8 = (pixel & 0x1F) * 255 / 31
-```
-
-**Use cases for a skill:**
-- **Screenshot / "What's on the panel?"** — Fetch the framebuffer, decode it, and describe what's currently displayed.
-- **Verification** — After drawing something, fetch the framebuffer to confirm it rendered correctly.
-- **Screen mirroring** — Periodically fetch the framebuffer to stream a live preview.
-
-**Example: Save as PNG with ImageMagick:**
-```bash
-curl -s http://$OPENCLAW_PANEL_IP/api/display/framebuffer -o fb.bin
-convert -size 64x32 -depth 16 RGB565:fb.bin screenshot.png
-```
-
-**Example: Save as PNG with ffmpeg:**
-```bash
-curl -s http://$OPENCLAW_PANEL_IP/api/display/framebuffer -o fb.bin
-ffmpeg -f rawvideo -pixel_format rgb565le -video_size 64x32 -i fb.bin -frames:v 1 screenshot.png
-```
-
-**Example: Read with Python:**
-```python
-import struct, requests
-resp = requests.get(f"http://{panel_ip}/api/display/framebuffer")
-pixels = struct.unpack("<2048H", resp.content)  # 2048 uint16 little-endian
-for y in range(32):
-    for x in range(64):
-        rgb565 = pixels[y * 64 + x]
-        r = ((rgb565 >> 11) & 0x1F) * 255 // 31
-        g = ((rgb565 >> 5) & 0x3F) * 255 // 63
-        b = (rgb565 & 0x1F) * 255 // 31
-```
+**GET /api/display/framebuffer** — Returns 4096 bytes of raw RGB565 binary data (64x32 pixels, row-major).
 
 ### Display control
 
 **POST /api/display/lock** — Take exclusive control of the display. Pauses the normal panel timeline. No body needed. Auto-unlocks after 30 seconds of inactivity.
 
 **POST /api/display/unlock** — Release control back to the normal timeline. No body needed.
+
+**POST /api/view_panel** — Force a specific timeline panel to show.
+```json
+{"index": 0}
+```
+This also unlocks the display if it was locked.
 
 ### Sound
 
@@ -253,7 +198,7 @@ Most draw endpoints accept `"swap": true|false` (default: true).
    POST /api/sound/play  {"name":"coin"}
    ```
 
-5. **To return to normal operation**: call unlock to resume the clock.
+5. **To return to normal operation**: call unlock, or use view_panel to jump to a specific dashboard panel.
 
 ## Guardrails
 
