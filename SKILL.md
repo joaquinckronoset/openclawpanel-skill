@@ -75,6 +75,7 @@ Values are auto-scaled to fit the height. `fill` fills the area under the line.
 This clears the screen and draws a complete panel. `dissolve` enables a fade transition.
 
 **POST /api/display/gif** — Play the built-in animated GIF. No body needed.
+Note: availability depends on firmware version. In v0.0.12 the endpoint returns `{"ok":true}` but may display nothing if no GIF is embedded in the firmware build.
 
 **POST /api/display/bitmap** — Draw a raw RGB565 bitmap. Body is raw binary (w*h*2 bytes). Dimensions via query params.
 ```
