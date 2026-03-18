@@ -230,9 +230,10 @@ User: "Show HELLO in green on the panel"
 ```
 curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/lock
 curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/clear
-curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/text -H "Content-Type: application/json" -d '{"text":"HELLO","x":4,"y":22,"color":"0x07E0","font":"arial_20"}'
+curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/text -H "Content-Type: application/json" -d '{"text":"HELLO","x":18,"y":12,"color":"0x07E0","font":"mono_12"}'
 ```
 Then after a few seconds: `curl -s -X POST http://$OPENCLAW_PANEL_IP/api/display/unlock`
+Note: arial_20 is too large for 5-char words on a 64x32 display. mono_12 at y=12 centers vertically.
 
 User: "Play the coin sound"
 ```
